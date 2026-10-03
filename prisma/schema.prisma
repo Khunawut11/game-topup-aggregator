@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Game {
+  id        String        @id @default(cuid())
+  name      String
+  slug      String        @unique
+  iconUrl   String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  packages  GamePackage[]
+
+  @@index([slug])
+}
+
+model Shop {
+  id         String         @id @default(cuid())
+  name       String
+  baseUrl    String
+  logoUrl    String
+  sourceType ShopSourceType @default(MANUAL)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  listings   PriceListing[]
+}
+
+model GamePackage {
+  id          String         @id @default(cuid())
+  gameId      String
+  packageName String
+  basePoints  Int
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  game        Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  listings    PriceListing[]
+
+  @@unique([gameId, packageName])
+  @@index([gameId])
+}
+
+model PriceListing {
+  id              String      @id @default(cuid())
+  packageId       String
+  shopId          String
+  originalPrice   Decimal     @db.Decimal(10, 2)
+  salePrice       Decimal     @db.Decimal(10, 2)
+  bonusPoints     Int         @default(0)
+  effectivePpu    Decimal     @db.Decimal(12, 4)
+  hasPromo        Boolean     @default(false)
+  promoLabel      String?
+  promoExpiresAt  DateTime?
+  isFirstTimeOnly Boolean     @default(false)
+  inStock         Boolean     @default(true)
+  updatedAt       DateTime    @updatedAt
+  package         GamePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  shop            Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, shopId])
+  @@index([packageId])
+  @@index([shopId])
+  @@index([effectivePpu])
+}
+
+enum ShopSourceType {
+  PARTNER_SHEET
+  MANUAL
+  SCRAPED
+}
