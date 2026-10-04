@@ -9,6 +9,7 @@ export interface CsvPriceRow {
   vp_points: number;
   shop_name: string;
   shop_url: string;
+  original_price: number;
   sale_price: number;
   bonus_points: number;
   promo_label?: string | null;
@@ -36,6 +37,7 @@ export function parseCsv(text: string): CsvPriceRow[] {
     vpPoints: header.findIndex((h) => h === "vp_points" || h === "points" || h === "base_points"),
     shopName: header.indexOf("shop_name"),
     shopUrl: header.indexOf("shop_url"),
+    originalPrice: header.indexOf("original_price"),
     salePrice: header.indexOf("sale_price"),
     bonusPoints: header.indexOf("bonus_points"),
     promoLabel: header.indexOf("promo_label"),
@@ -54,6 +56,8 @@ export function parseCsv(text: string): CsvPriceRow[] {
     const shopName = cols[idx.shopName]?.trim();
     const shopUrl = cols[idx.shopUrl]?.trim() || "";
     const salePrice = parseFloat(cols[idx.salePrice]?.replace(/,/g, "") || "0");
+    const origPriceParsed = idx.originalPrice !== -1 ? parseFloat(cols[idx.originalPrice]?.replace(/,/g, "") || "0") : 0;
+    const originalPrice = !isNaN(origPriceParsed) && origPriceParsed > 0 ? origPriceParsed : salePrice;
     const bonusPoints = parseInt(cols[idx.bonusPoints]?.replace(/,/g, "") || "0", 10);
     const promoLabel = cols[idx.promoLabel]?.trim() || null;
     const inStockRaw = cols[idx.inStock]?.trim().toLowerCase();
@@ -71,6 +75,7 @@ export function parseCsv(text: string): CsvPriceRow[] {
       vp_points: vpPoints,
       shop_name: shopName,
       shop_url: shopUrl,
+      original_price: originalPrice,
       sale_price: salePrice,
       bonus_points: isNaN(bonusPoints) ? 0 : bonusPoints,
       promo_label: promoLabel,
@@ -217,7 +222,8 @@ export async function syncPricesFromCsv(csvUrl: string) {
   // 4. Upsert PriceListing โดยใช้ ID จาก Memory ทั้งหมด
   for (const r of finalRows) {
     const gameId = gameMap.get(r.game_slug)!;
-    const packageName = r.package_name || (r.game_slug === "valorant" ? `${r.vp_points.toLocaleString()} VP` : `${r.vp_points.toLocaleString()} แต้ม`);
+    const unit = r.game_slug === "valorant" ? "VP" : r.game_slug === "rov" ? "คูปอง" : "แต้ม";
+    const packageName = r.package_name || `${r.vp_points.toLocaleString()} ${unit}`;
     const packageId = packageMap.get(`${gameId}_${packageName}`)!;
     const shopId = shopMap.get(r.shop_name)!;
 
@@ -232,7 +238,7 @@ export async function syncPricesFromCsv(csvUrl: string) {
         },
       },
       update: {
-        originalPrice: r.sale_price,
+        originalPrice: r.original_price,
         salePrice: r.sale_price,
         bonusPoints: r.bonus_points,
         effectivePpu,
@@ -243,7 +249,7 @@ export async function syncPricesFromCsv(csvUrl: string) {
       create: {
         packageId,
         shopId,
-        originalPrice: r.sale_price,
+        originalPrice: r.original_price,
         salePrice: r.sale_price,
         bonusPoints: r.bonus_points,
         effectivePpu,
