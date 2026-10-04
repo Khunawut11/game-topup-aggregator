@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import type { GameView } from "@/types/comparison";
 import { useLang } from "@/lib/i18n";
@@ -30,6 +30,7 @@ export function ComparisonView({ games }: { games: GameView[] }) {
   const [pkgId, setPkgId] = useState<string | number | undefined>(
     game?.packages[0]?.id,
   );
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -41,10 +42,30 @@ export function ComparisonView({ games }: { games: GameView[] }) {
     );
   }
 
-  const pkg = game.packages.find((p) => p.id === pkgId) ?? game.packages[0];
-  const bestId = pkg.listings.find((l) => l.inStock)?.id;
+  // ดึงหมวดหมู่/ประเภทสกุลเงินทั้งหมดที่มีในเกมนี้
+  const availableCategories = useMemo(() => {
+    if (!game) return [];
+    const set = new Set<string>();
+    for (const p of game.packages) {
+      if (p.category && p.category.trim()) {
+        set.add(p.category.trim());
+      }
+    }
+    return Array.from(set);
+  }, [game]);
+
+  const packagesInCategory = useMemo(() => {
+    if (!game) return [];
+    if (selectedCategory === "ALL" || availableCategories.length <= 1) {
+      return game.packages;
+    }
+    return game.packages.filter((p) => (p.category || "ทั่วไป") === selectedCategory);
+  }, [game, selectedCategory, availableCategories]);
+
+  const pkg = packagesInCategory.find((p) => p.id === pkgId) ?? packagesInCategory[0] ?? game.packages[0];
+  const bestId = pkg?.listings.find((l) => l.inStock)?.id;
   // เปลี่ยนค่านี้ = เล่นแอนิเมชันกวาด + แถวไล่เข้าใหม่
-  const viewKey = `${game.id}-${pkg.id}`;
+  const viewKey = `${game.id}-${pkg?.id}`;
 
   // Smart Search & Budget Match Logic
   const trimmedQuery = searchQuery.trim();
@@ -52,29 +73,27 @@ export function ComparisonView({ games }: { games: GameView[] }) {
   const isNumericSearch = !isNaN(numericInput) && numericInput > 0;
 
   const filteredPackages = (() => {
-    if (!trimmedQuery) return game.packages;
+    if (!trimmedQuery) return packagesInCategory;
 
     if (isNumericSearch) {
       // ผู้ใช้กรอกตัวเลขงบประมาณ (เช่น 500, 1000) หรือจำนวนแต้ม
-      // คัดเลือกและเรียงลำดับแพ็กเกจที่ราคาใกล้เคียงงบ หรือแต้มใกล้เคียงที่สุด
-      return [...game.packages]
+      return [...packagesInCategory]
         .map((p) => {
           const minPrice = p.listings.length > 0
             ? Math.min(...p.listings.map((l) => l.salePrice))
             : p.basePoints;
-          // ความต่างระหว่างงบกับราคา หรือความต่างของแต้ม
           const priceDiff = Math.abs(minPrice - numericInput);
           const ptsDiff = Math.abs(p.basePoints - numericInput);
           const score = Math.min(priceDiff, ptsDiff);
           return { p, score, minPrice };
         })
         .sort((a, b) => a.score - b.score)
-        .slice(0, 10) // ดึง 10 อันดับที่ตรงกับงบที่สุด
+        .slice(0, 10)
         .map((item) => item.p);
     }
 
-    // กรณีพิมพ์ข้อความ เช่น "Battle Pass", "VP"
-    return game.packages.filter(
+    // กรณีพิมพ์ข้อความ เช่น "Battle Pass", "Pass"
+    return packagesInCategory.filter(
       (p) =>
         p.packageName.toLowerCase().includes(trimmedQuery.toLowerCase()) ||
         String(p.basePoints).includes(trimmedQuery)
@@ -83,7 +102,9 @@ export function ComparisonView({ games }: { games: GameView[] }) {
 
   function selectGame(id: typeof gameId) {
     setGameId(id);
-    setPkgId(games.find((g) => g.id === id)?.packages[0]?.id);
+    const nextGame = games.find((g) => g.id === id);
+    setSelectedCategory("ALL");
+    setPkgId(nextGame?.packages[0]?.id);
     setSearchQuery("");
     playWipe();
   }
@@ -168,7 +189,7 @@ export function ComparisonView({ games }: { games: GameView[] }) {
             <div className="flex items-center gap-2">
               <span className="inline-block h-3 w-1 -skew-x-12 bg-[#19e3ff]" />
               <span className="text-xs font-black italic tracking-wider text-[#19e3ff]">
-                {t("packages")} ({game.packages.length})
+                {t("packages")} ({filteredPackages.length})
               </span>
             </div>
 
@@ -203,6 +224,62 @@ export function ComparisonView({ games }: { games: GameView[] }) {
               )}
             </div>
           </div>
+
+          {/* Persona 3 Sub-tabs: แสดงเมื่อเกมมีหมวดหมู่/ประเภทสกุลเงินมากกว่า 1 ประเภท */}
+          {availableCategories.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-[#19e3ff]/20 pb-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory("ALL");
+                  playSelect();
+                }}
+                onMouseEnter={playHover}
+                style={{
+                  clipPath:
+                    "polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%)",
+                }}
+                className={
+                  "px-3 py-1 text-xs font-black italic transition-all " +
+                  (selectedCategory === "ALL"
+                    ? "bg-[#19e3ff] text-[#020a1c] shadow-[0_0_12px_rgba(25,227,255,0.5)]"
+                    : "border border-[#19e3ff]/30 bg-[#06173a]/80 text-cyan-200 hover:border-[#19e3ff] hover:text-white")
+                }
+              >
+                // ทั้งหมด
+              </button>
+
+              {availableCategories.map((cat) => {
+                const active = selectedCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      // เลือกแพ็กเกจแรกของหมวดหมู่นี้อัตโนมัติ
+                      const firstPkg = game.packages.find((p) => (p.category || "ทั่วไป") === cat);
+                      if (firstPkg) setPkgId(firstPkg.id);
+                      playSelect();
+                    }}
+                    onMouseEnter={playHover}
+                    style={{
+                      clipPath:
+                        "polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%)",
+                    }}
+                    className={
+                      "px-3 py-1 text-xs font-black italic transition-all " +
+                      (active
+                        ? "bg-[#19e3ff] text-[#020a1c] shadow-[0_0_12px_rgba(25,227,255,0.5)]"
+                        : "border border-[#19e3ff]/30 bg-[#06173a]/80 text-cyan-200 hover:border-[#19e3ff] hover:text-white")
+                    }
+                  >
+                    // {cat.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* รายการแพ็กเกจ: Persona 3 Cut-Corner & Skew Grid */}
           <div className="p3-scroll max-h-64 overflow-y-auto overflow-x-hidden p-3">

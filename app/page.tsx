@@ -36,6 +36,7 @@ function toGameView(game: GameWithRelations, now: Date): GameView {
     iconUrl: game.iconUrl ?? null,
     packages: game.packages.map((pkg) => ({
       id: pkg.id,
+      category: (pkg as { category?: string }).category ?? "ทั่วไป",
       packageName: pkg.packageName,
       basePoints: pkg.basePoints,
       listings: pkg.listings.map((l) => {

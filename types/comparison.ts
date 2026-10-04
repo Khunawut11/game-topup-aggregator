@@ -29,6 +29,7 @@ export interface ListingView {
 
 export interface PackageView {
   id: string;
+  category: string;
   packageName: string;
   basePoints: number;
   listings: ListingView[];

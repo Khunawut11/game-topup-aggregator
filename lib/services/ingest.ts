@@ -4,6 +4,8 @@ import { ShopSourceType } from "@prisma/client";
 export interface CsvPriceRow {
   game_slug: string;
   game_name: string;
+  category: string;
+  package_name?: string | null;
   vp_points: number;
   shop_name: string;
   shop_url: string;
@@ -29,7 +31,9 @@ export function parseCsv(text: string): CsvPriceRow[] {
   const idx = {
     gameSlug: header.indexOf("game_slug"),
     gameName: header.indexOf("game_name"),
-    vpPoints: header.indexOf("vp_points"),
+    category: header.findIndex((h) => h === "category" || h === "currency_type" || h === "type"),
+    packageName: header.findIndex((h) => h === "package_name" || h === "package"),
+    vpPoints: header.findIndex((h) => h === "vp_points" || h === "points" || h === "base_points"),
     shopName: header.indexOf("shop_name"),
     shopUrl: header.indexOf("shop_url"),
     salePrice: header.indexOf("sale_price"),
@@ -44,6 +48,8 @@ export function parseCsv(text: string): CsvPriceRow[] {
     const cols = parseCsvLine(lines[i]);
     const gameSlug = cols[idx.gameSlug]?.trim();
     const gameName = cols[idx.gameName]?.trim() || gameSlug;
+    const category = (idx.category !== -1 ? cols[idx.category]?.trim() : "") || "ทั่วไป";
+    const customPkgName = idx.packageName !== -1 ? cols[idx.packageName]?.trim() : null;
     const vpPoints = parseInt(cols[idx.vpPoints]?.replace(/,/g, "") || "0", 10);
     const shopName = cols[idx.shopName]?.trim();
     const shopUrl = cols[idx.shopUrl]?.trim() || "";
@@ -60,6 +66,8 @@ export function parseCsv(text: string): CsvPriceRow[] {
     rows.push({
       game_slug: gameSlug,
       game_name: gameName,
+      category,
+      package_name: customPkgName,
       vp_points: vpPoints,
       shop_name: shopName,
       shop_url: shopUrl,
@@ -112,16 +120,15 @@ export async function syncPricesFromCsv(csvUrl: string) {
 
   let updatedCount = 0;
 
-  // สำหรับกรณีที่ร้านค้าเดียวกันมีหลายตัวเลือกสำหรับ vp_points เดียวกัน (เช่น มีตัวเลือกธรรมดา กับ ตัวเลือก Battle Pass)
-  // เพื่อไม่ให้ละเมิด @@unique([packageId, shopId]) เราจะเลือกตัวเลือกที่ถูกที่สุด หรือถ้าเท่ากันให้เลือกตัวที่มี promoLabel
+  // สำหรับกรณีที่ร้านค้าเดียวกันมีหลายตัวเลือกสำหรับ package เดียวกัน
   const dedupedMap = new Map<string, CsvPriceRow>();
   for (const r of rows) {
-    const key = `${r.game_slug}_${r.vp_points}_${r.shop_name}`;
+    const pkgLabel = r.package_name || `${r.vp_points.toLocaleString()} แต้ม`;
+    const key = `${r.game_slug}_${r.category}_${pkgLabel}_${r.shop_name}`;
     const existing = dedupedMap.get(key);
     if (!existing) {
       dedupedMap.set(key, r);
     } else {
-      // ถ้าตัวใหม่ถูกกว่า หรือถ้าเท่ากันแต่มี promo ให้เลือกตัวที่มีประโยชน์กว่า
       if (r.sale_price < existing.sale_price || (r.sale_price === existing.sale_price && r.promo_label && !existing.promo_label)) {
         dedupedMap.set(key, r);
       }
@@ -147,7 +154,7 @@ export async function syncPricesFromCsv(csvUrl: string) {
     gameMap.set(slug, game.id);
   }
 
-  // 2. แคช Shops ใน Memory (ดึงหรือสร้างครั้งเดียว ไม่ต้องยิง query ซ้ำใน loop)
+  // 2. แคช Shops ใน Memory
   const shopMap = new Map<string, string>(); // shop_name -> id
   const existingShops = await prisma.shop.findMany();
   for (const s of existingShops) {
@@ -173,14 +180,18 @@ export async function syncPricesFromCsv(csvUrl: string) {
   // 3. แคช Packages ใน Memory (สร้างหรือดึงเท่าที่จำเป็น)
   const packageMap = new Map<string, string>(); // `${gameId}_${packageName}` -> id
   const uniquePackages = Array.from(
-    new Set(finalRows.map((r) => `${r.game_slug}:::${r.vp_points}`))
+    new Set(
+      finalRows.map((r) => {
+        const pkgName = r.package_name || (r.game_slug === "valorant" ? `${r.vp_points.toLocaleString()} VP` : `${r.vp_points.toLocaleString()} แต้ม`);
+        return `${r.game_slug}:::${r.category}:::${r.vp_points}:::${pkgName}`;
+      })
+    )
   );
 
   for (const item of uniquePackages) {
-    const [slug, vpStr] = item.split(":::");
+    const [slug, category, vpStr, packageName] = item.split(":::");
     const vp = parseInt(vpStr, 10);
     const gameId = gameMap.get(slug)!;
-    const packageName = `${vp.toLocaleString()} VP`;
 
     const pkg = await prisma.gamePackage.upsert({
       where: {
@@ -189,9 +200,13 @@ export async function syncPricesFromCsv(csvUrl: string) {
           packageName,
         },
       },
-      update: { basePoints: vp },
+      update: {
+        basePoints: vp,
+        category: category || "ทั่วไป",
+      },
       create: {
         gameId,
+        category: category || "ทั่วไป",
         packageName,
         basePoints: vp,
       },
@@ -199,10 +214,10 @@ export async function syncPricesFromCsv(csvUrl: string) {
     packageMap.set(`${gameId}_${packageName}`, pkg.id);
   }
 
-  // 4. Upsert PriceListing โดยใช้ ID จาก Memory ทั้งหมด (ลดภาระฐานข้อมูลลงกว่า 80%)
+  // 4. Upsert PriceListing โดยใช้ ID จาก Memory ทั้งหมด
   for (const r of finalRows) {
     const gameId = gameMap.get(r.game_slug)!;
-    const packageName = `${r.vp_points.toLocaleString()} VP`;
+    const packageName = r.package_name || (r.game_slug === "valorant" ? `${r.vp_points.toLocaleString()} VP` : `${r.vp_points.toLocaleString()} แต้ม`);
     const packageId = packageMap.get(`${gameId}_${packageName}`)!;
     const shopId = shopMap.get(r.shop_name)!;
 

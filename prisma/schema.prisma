@@ -34,6 +34,7 @@ model Shop {
 model GamePackage {
   id          String         @id @default(cuid())
   gameId      String
+  category    String         @default("ทั่วไป")
   packageName String
   basePoints  Int
   createdAt   DateTime       @default(now())
@@ -43,6 +44,7 @@ model GamePackage {
 
   @@unique([gameId, packageName])
   @@index([gameId])
+  @@index([gameId, category])
 }
 
 model PriceListing {
