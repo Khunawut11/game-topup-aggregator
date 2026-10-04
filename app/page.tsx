@@ -8,7 +8,9 @@ import { Backdrop, Curtain } from "@/components/Backdrop";
 import type { GameView } from "@/types/comparison";
 import "@/components/comparison/motion.css";
 
-export const dynamic = "force-dynamic";
+// ใช้ ISR (Incremental Static Regeneration) แคชข้อมูลไว้ 60 วินาที
+// ทำให้เว็บโหลดเร็วทันที (Instant Load) และไม่ทำให้ Supabase Connection หลุดหรือ Timeout
+export const revalidate = 60;
 
 const gameInclude = {
   packages: {
