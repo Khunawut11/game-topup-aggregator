@@ -332,9 +332,21 @@ export function ComparisonView({ games }: { games: GameView[] }) {
                 </tr>
               </thead>
               <tbody key={`desktop-${viewKey}`}>
-                {pkg.listings.map((l, i) => (
-                  <Row key={l.id} l={l} i={i} best={l.id === bestId} />
-                ))}
+                {pkg.listings.map((l, i) => {
+                  const otherPrices = pkg.listings.filter((item) => item.id !== l.id && item.inStock);
+                  const secondBestPrice = otherPrices.length > 0 ? Math.min(...otherPrices.map((o) => o.salePrice)) : null;
+                  const savings = l.id === bestId && secondBestPrice && secondBestPrice > l.salePrice ? secondBestPrice - l.salePrice : 0;
+
+                  return (
+                    <Row
+                      key={l.id}
+                      l={l}
+                      i={i}
+                      best={l.id === bestId}
+                      savings={savings}
+                    />
+                  );
+                })}
               </tbody>
             </table>
 
@@ -464,7 +476,17 @@ function CountUp({
   return <>{format(v)}</>;
 }
 
-function Row({ l, i, best }: { l: Listing; i: number; best: boolean }) {
+function Row({
+  l,
+  i,
+  best,
+  savings = 0,
+}: {
+  l: Listing;
+  i: number;
+  best: boolean;
+  savings?: number;
+}) {
   const { t } = useLang();
   const discounted = l.originalPrice > l.salePrice;
   const sub = [
@@ -496,16 +518,25 @@ function Row({ l, i, best }: { l: Listing; i: number; best: boolean }) {
         )}
       </td>
 
-      {/* ราคา — ชิดขวา */}
+      {/* ราคา — ชิดขวา พร้อมป้ายเซฟไปเท่าไหร่ */}
       <td className="px-4 py-3 text-right align-middle font-mono tabular-nums">
-        <div className="font-semibold">
-          <CountUp value={l.salePrice} format={num.format} delay={i * 55 + 180} />
-        </div>
-        {discounted && (
-          <div className={"text-xs line-through " + muted}>
-            {num.format(l.originalPrice)}
+        <div className="flex flex-col items-end">
+          <div className="font-bold text-base">
+            <CountUp value={l.salePrice} format={num.format} delay={i * 55 + 180} />
           </div>
-        )}
+          {savings > 0 && (
+            <span className="mt-0.5 -skew-x-12 bg-[#020a1c] px-1.5 py-0.5 text-[10px] font-sans font-black italic text-emerald-400">
+              <span className="inline-block skew-x-12">
+                {t("saveAmount")} ฿{num.format(savings)}!
+              </span>
+            </span>
+          )}
+          {discounted && (
+            <div className={"text-xs line-through " + muted}>
+              {num.format(l.originalPrice)}
+            </div>
+          )}
+        </div>
       </td>
 
       {/* แต้มแถม — ชิดขวา */}
