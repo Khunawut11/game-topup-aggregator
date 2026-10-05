@@ -389,29 +389,40 @@ export function ComparisonView({ games }: { games: GameView[] }) {
           </div>
         </div>
 
-        {/* ตาราง */}
+        {/* ตารางเปรียบเทียบ: Persona 3 Reload High-Contrast Floating Slab */}
         <div
-          className="relative overflow-hidden border-l-4 border-[#19e3ff] bg-[#06173a]"
+          className="relative overflow-hidden border-2 border-[#19e3ff]/60 bg-[#06173a]/95 shadow-[0_0_35px_rgba(25,227,255,0.15)] ring-1 ring-[#19e3ff]/30"
           style={{
             clipPath:
               "polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)",
           }}
         >
+          {/* P3R Corner Accents */}
+          <div className="pointer-events-none absolute left-0 top-0 h-4 w-4 border-l-2 border-t-2 border-[#19e3ff]" />
+          <div className="pointer-events-none absolute right-0 top-0 h-4 w-4 border-r-2 border-t-2 border-[#19e3ff]" />
+
           {/* แผ่นฟ้ากวาดผ่านตอนเปลี่ยนมุมมอง */}
           <div key={`wipe-${viewKey}`} aria-hidden className="p3-wipe" />
 
-          <div className="flex flex-wrap items-end justify-between gap-2 px-4 pb-3 pt-4">
-            <h2
-              key={`title-${viewKey}`}
-              className="p3-clip-in py-1 text-xl font-black italic leading-[1.4] sm:text-2xl"
-              style={{ animationDelay: "120ms" }}
-            >
-              {game.name}
-              <span className="ml-3 text-[#19e3ff]">{pkg.packageName}</span>
-            </h2>
-            <span className="font-mono text-xs tabular-nums text-cyan-100/60">
-              {int.format(pkg.basePoints)} {t("pointsUnit")}
-            </span>
+          {/* Table Header Strip */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#19e3ff]/40 bg-[#020a1c]/80 px-5 py-3.5">
+            <div className="flex items-center gap-3">
+              <span className="inline-block h-5 w-1.5 -skew-x-12 bg-[#19e3ff] shadow-[0_0_8px_#19e3ff]" />
+              <h2
+                key={`title-${viewKey}`}
+                className="p3-clip-in text-lg font-black italic tracking-wide text-white sm:text-2xl"
+                style={{ animationDelay: "120ms" }}
+              >
+                {game.name}
+                <span className="ml-2.5 inline-block -skew-x-12 bg-[#19e3ff] px-2.5 py-0.5 text-sm font-black italic text-[#020a1c]">
+                  <span className="inline-block skew-x-12">{pkg.packageName}</span>
+                </span>
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-xs font-bold text-cyan-100/70">
+              <span className="h-1.5 w-1.5 bg-[#19e3ff]" />
+              <span>{int.format(pkg.basePoints)} {t("pointsUnit")}</span>
+            </div>
           </div>
 
           {/* สำหรับจอคอมและแท็บเล็ต: แสดงเป็นตาราง Table */}

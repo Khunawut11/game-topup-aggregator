@@ -9,15 +9,34 @@ const SHARDS = [
   { l: "88%", s: 9, d: 8, t: 15 },
 ];
 
-/** ฉากหลัง: ดวงจันทร์ + นาฬิกา Dark Hour + เศษคริสตัลลอยขึ้น */
+/** ฉากหลัง: P3R Water Distortion + Halftone Dot Matrix + นาฬิกา Dark Hour + เศษคริสตัล */
 export function Backdrop() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+      {/* 1. Deep Ocean Gradient & Vignette */}
+      <div className="absolute inset-0 bg-radial-[circle_at_50%_0%] from-[#0b296b]/30 via-[#020a1c]/90 to-[#010612]" />
       <div className="p3-vignette absolute inset-0" />
+
+      {/* 2. P3R Halftone Dot Matrix Texture (ลายจุดสไตล์มังงะ/เกม Atlus) */}
+      <div
+        className="absolute inset-0 opacity-15"
+        style={{
+          backgroundImage:
+            "radial-gradient(#19e3ff 1px, transparent 1px), radial-gradient(#19e3ff 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+          backgroundPosition: "0 0, 12px 12px",
+        }}
+      />
+
+      {/* 3. P3R Dynamic Slanted Water Slabs (ริบบิ้นน้ำเฉียงลอยซ้อนมิติ) */}
+      <div className="absolute -left-20 top-1/4 h-96 w-[140%] -rotate-12 bg-gradient-to-r from-transparent via-[#19e3ff]/[0.035] to-transparent pointer-events-none" />
+      <div className="absolute -left-40 top-2/3 h-64 w-[140%] -rotate-6 bg-gradient-to-r from-transparent via-[#19e3ff]/[0.025] to-transparent pointer-events-none" />
+
+      {/* 4. Persona 3 Reload Moon */}
       <div className="p3-moon absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full" />
 
-      {/* นาฬิกาโรมัน มุมซ้ายล่าง */}
-      <div className="absolute -bottom-40 -left-40 h-[40rem] w-[40rem] text-[#19e3ff] opacity-30">
+      {/* 5. นาฬิกาโรมัน มุมซ้ายล่าง */}
+      <div className="absolute -bottom-40 -left-40 h-[40rem] w-[40rem] text-[#19e3ff] opacity-25">
         <svg viewBox="-200 -200 400 400" className="p3-spin-slow absolute inset-0 h-full w-full">
           <circle r="190" fill="none" stroke="currentColor" strokeWidth="1.5" />
           <circle r="145" fill="none" stroke="currentColor" strokeWidth="0.8" strokeDasharray="3 6" />
