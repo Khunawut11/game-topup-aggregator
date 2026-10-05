@@ -4,12 +4,27 @@ import Link from "next/link";
 export const revalidate = 0; // หน้า Dashboard ดึงข้อมูลสดทุกครั้งที่เปิดดู
 
 export default async function DashboardPage() {
-  // 1. ดึงข้อมูลคลิกทั้งหมด
-  // @ts-expect-error ClickLog model generated on push
-  const clicks = await prisma.clickLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100, // แสดง 100 คลิกประวัติล่าสุด
-  });
+  type ClickItem = {
+    id: string;
+    gameSlug: string;
+    gameName: string;
+    shopName: string;
+    packageName: string;
+    salePrice: number;
+    createdAt: Date;
+  };
+
+  let clicks: ClickItem[] = [];
+  try {
+    // 1. ดึงข้อมูลคลิกทั้งหมด
+    // @ts-expect-error ClickLog model generated on build
+    clicks = await prisma.clickLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100, // แสดง 100 คลิกประวัติล่าสุด
+    });
+  } catch (error) {
+    console.error("Dashboard DB fetch error:", error);
+  }
 
   const totalClicks = clicks.length;
 
