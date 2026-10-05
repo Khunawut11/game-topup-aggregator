@@ -176,13 +176,6 @@ export function ComparisonView({ games }: { games: GameView[] }) {
                     : "border border-[#19e3ff]/30 bg-[#06173a]/90 text-cyan-100 hover:border-[#19e3ff] hover:bg-[#0b2a5e] hover:text-white lg:hover:translate-x-1.5")
                 }
               >
-                {/* Persona 3 Pointer Icon */}
-                {active && (
-                  <span
-                    aria-hidden
-                    className="p3-cursor absolute -left-2 top-1/2 h-0 w-0 -translate-y-1/2 border-y-[6px] border-l-[9px] border-y-transparent border-l-[#19e3ff]"
-                  />
-                )}
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-block skew-x-12 whitespace-nowrap text-xs font-black italic tracking-wide sm:text-sm">
                     {g.name}
