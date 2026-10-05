@@ -35,6 +35,7 @@ model GamePackage {
   id          String         @id @default(cuid())
   gameId      String
   category    String         @default("ทั่วไป")
+  unit        String         @default("แต้ม")
   packageName String
   basePoints  Int
   createdAt   DateTime       @default(now())

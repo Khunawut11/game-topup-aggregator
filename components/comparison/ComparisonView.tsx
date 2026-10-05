@@ -146,8 +146,7 @@ export function ComparisonView({ games }: { games: GameView[] }) {
         className="flex gap-3 overflow-x-auto px-2 py-3 scrollbar-none lg:block lg:space-y-2 lg:overflow-visible lg:px-0 lg:py-0"
         onKeyDown={onMenuKey}
       >
-        <div className="hidden text-xs font-black italic tracking-widest text-[#19e3ff] lg:mb-3 lg:flex lg:items-center lg:gap-2">
-          <span className="h-3 w-1 -skew-x-12 bg-[#19e3ff]" />
+        <div className="hidden text-xs font-black italic tracking-widest text-[#19e3ff] lg:mb-3 lg:block">
           <span>{t("games")}</span>
         </div>
         {games.map((g, i) => {
@@ -193,16 +192,13 @@ export function ComparisonView({ games }: { games: GameView[] }) {
       </nav>
 
       <section className="min-w-0 space-y-6">
-        {/* แพ็กเกจแบบ Persona 3 Reload */}
+        {/* รายการแพ็กเกจ & ค้นหา */}
         <div className="space-y-4">
-          {/* Header & Budget / Points Smart Search Box */}
+          {/* Header & Search */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-3 w-1 -skew-x-12 bg-[#19e3ff]" />
-              <span className="text-xs font-black italic tracking-wider text-[#19e3ff]">
-                {t("packages")} ({filteredPackages.length})
-              </span>
-            </div>
+            <span className="text-xs font-black italic tracking-wider text-[#19e3ff]">
+              {t("packages")} ({filteredPackages.length})
+            </span>
 
             {/* Persona 3 Angled Search & Budget Finder */}
             <div className="relative w-full sm:w-80">
@@ -229,14 +225,14 @@ export function ComparisonView({ games }: { games: GameView[] }) {
 
               {/* ป้ายแนะนำสำหรับผลลัพธ์ใกล้เคียงงบ */}
               {isNumericSearch && filteredPackages.length > 0 && (
-                <div className="absolute right-0 top-full z-20 mt-1 flex items-center gap-1.5 rounded-none bg-[#19e3ff] px-2 py-0.5 text-[10px] font-black italic text-[#020a1c] shadow-md">
-                  <span>◆ {t("closestMatch")}</span>
+                <div className="absolute right-0 top-full z-20 mt-1 flex items-center gap-1.5 bg-[#19e3ff] px-2 py-0.5 text-[10px] font-black italic text-[#020a1c] shadow-md">
+                  <span>{t("closestMatch")}</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Persona 3 Sub-tabs: แสดงเมื่อเกมมีหมวดหมู่/ประเภทสกุลเงินมากกว่า 1 ประเภท */}
+          {/* Sub-tabs: แสดงเมื่อเกมมีหมวดหมู่มากกว่า 1 หมวด */}
           {availableCategories.length > 1 && (
             <div className="flex flex-wrap items-center gap-2 border-b border-[#19e3ff]/20 pb-2">
               <button
@@ -257,7 +253,7 @@ export function ComparisonView({ games }: { games: GameView[] }) {
                     : "border border-[#19e3ff]/30 bg-[#06173a]/80 text-cyan-200 hover:border-[#19e3ff] hover:text-white")
                 }
               >
-                // ทั้งหมด
+                {t("allPackages")}
               </button>
 
               {availableCategories.map((cat) => {
@@ -268,7 +264,6 @@ export function ComparisonView({ games }: { games: GameView[] }) {
                     type="button"
                     onClick={() => {
                       setSelectedCategory(cat);
-                      // เลือกแพ็กเกจแรกของหมวดหมู่นี้อัตโนมัติ
                       const firstPkg = game.packages.find((p) => (p.category || "ทั่วไป") === cat);
                       if (firstPkg) setPkgId(firstPkg.id);
                       playSelect();
@@ -285,19 +280,18 @@ export function ComparisonView({ games }: { games: GameView[] }) {
                         : "border border-[#19e3ff]/30 bg-[#06173a]/80 text-cyan-200 hover:border-[#19e3ff] hover:text-white")
                     }
                   >
-                    // {cat.toUpperCase()}
+                    {cat}
                   </button>
                 );
               })}
             </div>
           )}
 
-          {/* รายการแพ็กเกจ: Persona 3 Cut-Corner & Skew Grid */}
-          <div className="p3-scroll max-h-64 overflow-y-auto overflow-x-hidden p-3">
+          {/* รายการแพ็กเกจ: Persona 3 Chamfered Slab Grid */}
+          <div className="p3-scroll max-h-64 overflow-y-auto overflow-x-hidden p-1">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filteredPackages.map((p) => {
-                const active = p.id === pkg.id;
-                // หาช่วงราคาต่ำสุดของแพ็กเกจนี้
+                const active = p.id === pkg?.id;
                 const minPrice = p.listings.length > 0
                   ? Math.min(...p.listings.map((l) => l.salePrice))
                   : null;
@@ -317,21 +311,19 @@ export function ComparisonView({ games }: { games: GameView[] }) {
                         "polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%)",
                     }}
                     className={
-                      "group relative flex flex-col justify-between p-2.5 text-left transition-[transform,background-color,border-color,box-shadow] duration-150 focus:outline-none active:scale-95 " +
+                      "group relative flex flex-col justify-between p-3 text-left transition-[transform,background-color,border-color,box-shadow] duration-150 focus:outline-none active:scale-95 " +
                       (active
                         ? "bg-[#19e3ff] text-[#020a1c] shadow-[0_0_20px_rgba(25,227,255,0.6)] ring-2 ring-white"
                         : "border border-[#19e3ff]/30 bg-[#06173a]/70 text-white hover:-translate-y-1 hover:border-[#19e3ff] hover:bg-[#0b2555]")
                     }
                   >
-                    {/* Persona 3 Cursor Triangle on Active */}
                     {active && (
                       <span
                         aria-hidden
-                        className="p3-cursor absolute -left-1 top-2 h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-white"
+                        className="p3-cursor absolute -left-1 top-2.5 h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-white"
                       />
                     )}
 
-                    {/* จุดและจำนวนแต้ม */}
                     <div className="flex items-center justify-between gap-1">
                       <span
                         className={
@@ -348,9 +340,8 @@ export function ComparisonView({ games }: { games: GameView[] }) {
                       )}
                     </div>
 
-                    {/* ราคาเริ่มต้น */}
                     {minPrice !== null && (
-                      <div className="mt-1 flex items-baseline justify-between font-mono text-[11px] tabular-nums">
+                      <div className="mt-1.5 flex items-baseline justify-between font-mono text-[11px] tabular-nums">
                         <span
                           className={
                             "text-[9px] font-sans font-bold uppercase " +
@@ -382,25 +373,20 @@ export function ComparisonView({ games }: { games: GameView[] }) {
           </div>
         </div>
 
-        {/* ตารางเปรียบเทียบ: Persona 3 Reload High-Contrast Floating Slab */}
+        {/* ตารางเปรียบเทียบ: Persona 3 Reload Floating Slab */}
         <div
-          className="relative overflow-hidden border-2 border-[#19e3ff]/60 bg-[#06173a]/95 shadow-[0_0_35px_rgba(25,227,255,0.15)] ring-1 ring-[#19e3ff]/30"
+          className="relative overflow-hidden border border-[#19e3ff]/50 bg-[#06173a]/95 shadow-[0_0_35px_rgba(25,227,255,0.12)]"
           style={{
             clipPath:
-              "polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)",
+              "polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)",
           }}
         >
-          {/* P3R Corner Accents */}
-          <div className="pointer-events-none absolute left-0 top-0 h-4 w-4 border-l-2 border-t-2 border-[#19e3ff]" />
-          <div className="pointer-events-none absolute right-0 top-0 h-4 w-4 border-r-2 border-t-2 border-[#19e3ff]" />
-
           {/* แผ่นฟ้ากวาดผ่านตอนเปลี่ยนมุมมอง */}
           <div key={`wipe-${viewKey}`} aria-hidden className="p3-wipe" />
 
           {/* Table Header Strip */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#19e3ff]/40 bg-[#020a1c]/80 px-5 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#19e3ff]/30 bg-[#020a1c]/80 px-5 py-3.5">
             <div className="flex items-center gap-3">
-              <span className="inline-block h-5 w-1.5 -skew-x-12 bg-[#19e3ff] shadow-[0_0_8px_#19e3ff]" />
               <h2
                 key={`title-${viewKey}`}
                 className="p3-clip-in text-lg font-black italic tracking-wide text-white sm:text-2xl"
@@ -408,30 +394,31 @@ export function ComparisonView({ games }: { games: GameView[] }) {
               >
                 {game.name}
                 <span className="ml-2.5 inline-block -skew-x-12 bg-[#19e3ff] px-2.5 py-0.5 text-sm font-black italic text-[#020a1c]">
-                  <span className="inline-block skew-x-12">{pkg.packageName}</span>
+                  <span className="inline-block skew-x-12">{pkg?.packageName}</span>
                 </span>
               </h2>
             </div>
-            <div className="flex items-center gap-2 font-mono text-xs font-bold text-cyan-100/70">
-              <span className="h-1.5 w-1.5 bg-[#19e3ff]" />
-              <span>{int.format(pkg.basePoints)} {t("pointsUnit")}</span>
+            <div className="flex items-center gap-2 font-mono text-xs font-bold text-cyan-100/80">
+              <span>{int.format(pkg?.basePoints ?? 0)} {pkg?.unit || t("pointsUnit")}</span>
             </div>
           </div>
 
-          {/* สำหรับจอคอมและแท็บเล็ต: แสดงเป็นตาราง Table */}
+          {/* คอมและแท็บเล็ต: Table */}
           <div className="hidden overflow-x-auto pb-6 sm:block">
             <table className="w-full min-w-[600px] border-collapse text-sm">
               <thead>
-                <tr className="border-y border-[#19e3ff]/40 text-xs font-bold italic text-[#19e3ff]">
-                  <th className="px-4 py-2 text-left">{t("colShop")}</th>
-                  <th className="px-4 py-2 text-right">{t("colPrice")}</th>
-                  <th className="px-4 py-2 text-right">{t("colBonus")}</th>
-                  <th className="px-4 py-2 text-right">{t("colPpu")}</th>
-                  <th className="w-px px-4 py-2" />
+                <tr className="border-y border-[#19e3ff]/30 text-xs font-bold italic text-[#19e3ff]">
+                  <th className="px-5 py-2.5 text-left">{t("colShop")}</th>
+                  <th className="px-5 py-2.5 text-right">{t("colPrice")}</th>
+                  <th className="px-5 py-2.5 text-right">{t("colBonus")}</th>
+                  <th className="px-5 py-2.5 text-right">
+                    {t("colPpu")} (฿/{pkg?.unit || t("pointsUnit")})
+                  </th>
+                  <th className="w-px px-5 py-2.5" />
                 </tr>
               </thead>
               <tbody key={`desktop-${viewKey}`}>
-                {pkg.listings.map((l, i) => {
+                {pkg?.listings.map((l, i) => {
                   const otherPrices = pkg.listings.filter((item) => item.id !== l.id && item.inStock);
                   const secondBestPrice = otherPrices.length > 0 ? Math.min(...otherPrices.map((o) => o.salePrice)) : null;
                   const savings = l.id === bestId && secondBestPrice && secondBestPrice > l.salePrice ? secondBestPrice - l.salePrice : 0;
@@ -450,16 +437,16 @@ export function ComparisonView({ games }: { games: GameView[] }) {
               </tbody>
             </table>
 
-            {pkg.listings.length === 0 && (
+            {(!pkg || pkg.listings.length === 0) && (
               <div className="px-4 py-10 text-center text-sm text-cyan-100/60">
                 {t("noShops")}
               </div>
             )}
           </div>
 
-          {/* สำหรับจอมือถือ (Smartphones): แสดงเป็น P3R Battle Cards เรียงลงมาตามแนวตั้ง ไม่ต้องเลื่อนซ้ายขวา */}
+          {/* มือถือ: Mobile Cards */}
           <div key={`mobile-${viewKey}`} className="space-y-3 p-4 sm:hidden">
-            {pkg.listings.map((l, i) => {
+            {pkg?.listings.map((l, i) => {
               const best = l.id === bestId;
               const otherPrices = pkg.listings.filter((item) => item.id !== l.id && item.inStock);
               const secondBestPrice = otherPrices.length > 0 ? Math.min(...otherPrices.map((o) => o.salePrice)) : null;
@@ -503,7 +490,7 @@ export function ComparisonView({ games }: { games: GameView[] }) {
 
                   <div className="mt-3 flex items-center justify-between border-t border-[#19e3ff]/20 pt-2.5 text-xs">
                     <div className="font-mono text-cyan-100/80">
-                      PPU: <span className="font-bold text-[#19e3ff]">{ppuFmt.format(l.effectivePpu)}</span> ฿/แต้ม
+                      เรทเฉลี่ย: <span className="font-bold text-[#19e3ff]">{ppuFmt.format(l.effectivePpu)}</span> ฿/{pkg.unit || t("pointsUnit")}
                     </div>
 
                     {savings > 0 && (
@@ -529,7 +516,7 @@ export function ComparisonView({ games }: { games: GameView[] }) {
               );
             })}
 
-            {pkg.listings.length === 0 && (
+            {(!pkg || pkg.listings.length === 0) && (
               <div className="py-8 text-center text-xs font-bold text-cyan-100/60">
                 {t("noShops")}
               </div>

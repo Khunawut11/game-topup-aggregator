@@ -30,6 +30,8 @@ export interface ListingView {
 export interface PackageView {
   id: string;
   category: string;
+  /** หน่วยที่ใช้แสดงผล เช่น VP, คูปอง, Crystals */
+  unit: string;
   packageName: string;
   basePoints: number;
   listings: ListingView[];

@@ -5,15 +5,39 @@ export interface CsvPriceRow {
   game_slug: string;
   game_name: string;
   category: string;
-  package_name?: string | null;
-  vp_points: number;
+  unit: string;
+  package_name: string;
+  points: number;
+  bonus_points: number;
   shop_name: string;
   shop_url: string;
   original_price: number;
   sale_price: number;
-  bonus_points: number;
-  promo_label?: string | null;
+  promo_label: string | null;
+  promo_expires_at: Date | null;
+  first_time_only: boolean;
   in_stock: boolean;
+}
+
+const DEFAULT_CATEGORY = "ทั่วไป";
+const DEFAULT_UNIT = "แต้ม";
+
+function toNumber(raw: string | undefined): number {
+  return parseFloat((raw ?? "").replace(/,/g, "").trim());
+}
+
+function toBool(raw: string | undefined, fallback: boolean): boolean {
+  const v = (raw ?? "").trim().toLowerCase();
+  if (v === "") return fallback;
+  return v === "true" || v === "1" || v === "yes";
+}
+
+function toDate(raw: string | undefined): Date | null {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  // วันที่ในชีตเป็นปี-เดือน-วัน ให้โปรหมดตอนสิ้นวันตามเวลาไทย
+  const d = new Date(`${v}T23:59:59+07:00`);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 /**
@@ -27,59 +51,59 @@ export function parseCsv(text: string): CsvPriceRow[] {
 
   if (lines.length < 2) return [];
 
-  // Parse header
   const header = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
+  const col = (...names: string[]) => header.findIndex((h) => names.includes(h));
   const idx = {
-    gameSlug: header.indexOf("game_slug"),
-    gameName: header.indexOf("game_name"),
-    category: header.findIndex((h) => h === "category" || h === "currency_type" || h === "type"),
-    packageName: header.findIndex((h) => h === "package_name" || h === "package"),
-    vpPoints: header.findIndex((h) => h === "vp_points" || h === "points" || h === "base_points"),
-    shopName: header.indexOf("shop_name"),
-    shopUrl: header.indexOf("shop_url"),
-    originalPrice: header.indexOf("original_price"),
-    salePrice: header.indexOf("sale_price"),
-    bonusPoints: header.indexOf("bonus_points"),
-    promoLabel: header.indexOf("promo_label"),
-    inStock: header.indexOf("in_stock"),
+    gameSlug: col("game_slug"),
+    gameName: col("game_name"),
+    category: col("category", "currency_type", "type"),
+    unit: col("unit"),
+    packageName: col("package_name", "package"),
+    points: col("points", "vp_points", "base_points"),
+    bonusPoints: col("bonus_points"),
+    shopName: col("shop_name"),
+    shopUrl: col("shop_url"),
+    originalPrice: col("original_price"),
+    salePrice: col("sale_price"),
+    promoLabel: col("promo_label"),
+    promoExpiresAt: col("promo_expires_at"),
+    firstTimeOnly: col("first_time_only"),
+    inStock: col("in_stock"),
   };
+
+  const get = (cols: string[], i: number) => (i === -1 ? undefined : cols[i]?.trim());
 
   const rows: CsvPriceRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const cols = parseCsvLine(lines[i]);
-    const gameSlug = cols[idx.gameSlug]?.trim();
-    const gameName = cols[idx.gameName]?.trim() || gameSlug;
-    const category = (idx.category !== -1 ? cols[idx.category]?.trim() : "") || "ทั่วไป";
-    const customPkgName = idx.packageName !== -1 ? cols[idx.packageName]?.trim() : null;
-    const vpPoints = parseInt(cols[idx.vpPoints]?.replace(/,/g, "") || "0", 10);
-    const shopName = cols[idx.shopName]?.trim();
-    const shopUrl = cols[idx.shopUrl]?.trim() || "";
-    const salePrice = parseFloat(cols[idx.salePrice]?.replace(/,/g, "") || "0");
-    const origPriceParsed = idx.originalPrice !== -1 ? parseFloat(cols[idx.originalPrice]?.replace(/,/g, "") || "0") : 0;
-    const originalPrice = !isNaN(origPriceParsed) && origPriceParsed > 0 ? origPriceParsed : salePrice;
-    const bonusPoints = parseInt(cols[idx.bonusPoints]?.replace(/,/g, "") || "0", 10);
-    const promoLabel = cols[idx.promoLabel]?.trim() || null;
-    const inStockRaw = cols[idx.inStock]?.trim().toLowerCase();
-    const inStock = inStockRaw === "true" || inStockRaw === "1" || inStockRaw === "yes" || inStockRaw === undefined || inStockRaw === "";
+    const gameSlug = get(cols, idx.gameSlug)?.toLowerCase();
+    const shopName = get(cols, idx.shopName);
+    const points = toNumber(get(cols, idx.points));
+    const salePrice = toNumber(get(cols, idx.salePrice));
 
-    if (!gameSlug || isNaN(vpPoints) || vpPoints <= 0 || !shopName || isNaN(salePrice) || salePrice <= 0) {
-      continue;
-    }
+    if (!gameSlug || !shopName || !(points > 0) || !(salePrice > 0)) continue;
+
+    const unit = get(cols, idx.unit) || DEFAULT_UNIT;
+    const originalPrice = toNumber(get(cols, idx.originalPrice));
+    const bonus = toNumber(get(cols, idx.bonusPoints));
 
     rows.push({
       game_slug: gameSlug,
-      game_name: gameName,
-      category,
-      package_name: customPkgName,
-      vp_points: vpPoints,
+      game_name: get(cols, idx.gameName) || gameSlug,
+      category: get(cols, idx.category) || DEFAULT_CATEGORY,
+      unit,
+      package_name: get(cols, idx.packageName) || `${points.toLocaleString("en-US")} ${unit}`,
+      points: Math.round(points),
+      bonus_points: bonus > 0 ? Math.round(bonus) : 0,
       shop_name: shopName,
-      shop_url: shopUrl,
-      original_price: originalPrice,
+      shop_url: get(cols, idx.shopUrl) || "",
+      original_price: originalPrice > 0 ? originalPrice : salePrice,
       sale_price: salePrice,
-      bonus_points: isNaN(bonusPoints) ? 0 : bonusPoints,
-      promo_label: promoLabel,
-      in_stock: inStock,
+      promo_label: get(cols, idx.promoLabel) || null,
+      promo_expires_at: toDate(get(cols, idx.promoExpiresAt)),
+      first_time_only: toBool(get(cols, idx.firstTimeOnly), false),
+      in_stock: toBool(get(cols, idx.inStock), true),
     });
   }
 
@@ -113,6 +137,7 @@ function parseCsvLine(line: string): string[] {
 
 /**
  * ดึงข้อมูลจาก Google Sheet CSV URL และ Upsert ลง Supabase
+ * แถวที่ถูกลบออกจากชีต จะถูกลบออกจากฐานข้อมูลด้วย (เฉพาะเกมที่อยู่ในชีตรอบนี้)
  */
 export async function syncPricesFromCsv(csvUrl: string) {
   const res = await fetch(csvUrl, { cache: "no-store" });
@@ -120,150 +145,124 @@ export async function syncPricesFromCsv(csvUrl: string) {
     throw new Error(`Failed to fetch CSV: ${res.status} ${res.statusText}`);
   }
 
-  const text = await res.text();
-  const rows = parseCsv(text);
-
-  let updatedCount = 0;
-
-  // สำหรับกรณีที่ร้านค้าเดียวกันมีหลายตัวเลือกสำหรับ package เดียวกัน
-  const dedupedMap = new Map<string, CsvPriceRow>();
-  for (const r of rows) {
-    const pkgLabel = r.package_name || `${r.vp_points.toLocaleString()} แต้ม`;
-    const key = `${r.game_slug}_${r.category}_${pkgLabel}_${r.shop_name}`;
-    const existing = dedupedMap.get(key);
-    if (!existing) {
-      dedupedMap.set(key, r);
-    } else {
-      if (r.sale_price < existing.sale_price || (r.sale_price === existing.sale_price && r.promo_label && !existing.promo_label)) {
-        dedupedMap.set(key, r);
-      }
-    }
+  const rows = parseCsv(await res.text());
+  if (rows.length === 0) {
+    // กันชีตว่าง/หัวคอลัมน์ผิด แล้วไปลบข้อมูลทั้งหมดทิ้ง
+    throw new Error("No valid rows found in sheet. Check the header row.");
   }
 
-  const finalRows = Array.from(dedupedMap.values());
+  // ร้านเดียวกันขายแพ็กเดียวกันหลายแถว: เก็บแถวที่ถูกที่สุด (ราคาเท่ากันให้เลือกแถวที่มีโปร)
+  const deduped = new Map<string, CsvPriceRow>();
+  for (const r of rows) {
+    const key = `${r.game_slug}|${r.package_name}|${r.shop_name}`;
+    const existing = deduped.get(key);
+    if (
+      !existing ||
+      r.sale_price < existing.sale_price ||
+      (r.sale_price === existing.sale_price && r.promo_label && !existing.promo_label)
+    ) {
+      deduped.set(key, r);
+    }
+  }
+  const finalRows = Array.from(deduped.values());
 
-  // 1. แคช Games ใน Memory (ดึงหรือสร้างครั้งเดียว)
+  // 1. Games
   const gameMap = new Map<string, string>(); // slug -> id
-  const uniqueGames = Array.from(new Set(finalRows.map((r) => r.game_slug)));
-  for (const slug of uniqueGames) {
+  for (const slug of new Set(finalRows.map((r) => r.game_slug))) {
     const row = finalRows.find((r) => r.game_slug === slug)!;
     const game = await prisma.game.upsert({
       where: { slug },
       update: { name: row.game_name },
-      create: {
-        slug,
-        name: row.game_name,
-        iconUrl: `https://placehold.co/120x120/1e293b/38bdf8?text=${encodeURIComponent(row.game_name)}`,
-      },
+      create: { slug, name: row.game_name, iconUrl: "" },
     });
     gameMap.set(slug, game.id);
   }
 
-  // 2. แคช Shops ใน Memory
-  const shopMap = new Map<string, string>(); // shop_name -> id
-  const existingShops = await prisma.shop.findMany();
-  for (const s of existingShops) {
-    shopMap.set(s.name, s.id);
+  // 2. Shops
+  const shopMap = new Map<string, string>(); // name -> id
+  for (const s of await prisma.shop.findMany()) shopMap.set(s.name, s.id);
+  for (const name of new Set(finalRows.map((r) => r.shop_name))) {
+    if (shopMap.has(name)) continue;
+    const row = finalRows.find((r) => r.shop_name === name)!;
+    const created = await prisma.shop.create({
+      data: {
+        name,
+        baseUrl: row.shop_url,
+        logoUrl: "",
+        sourceType: ShopSourceType.PARTNER_SHEET,
+      },
+    });
+    shopMap.set(name, created.id);
   }
 
-  const uniqueShopNames = Array.from(new Set(finalRows.map((r) => r.shop_name)));
-  for (const sName of uniqueShopNames) {
-    if (!shopMap.has(sName)) {
-      const row = finalRows.find((r) => r.shop_name === sName)!;
-      const created = await prisma.shop.create({
-        data: {
-          name: sName,
-          baseUrl: row.shop_url,
-          logoUrl: `https://placehold.co/60x60/2563eb/ffffff?text=${encodeURIComponent(sName.slice(0, 4))}`,
-          sourceType: ShopSourceType.PARTNER_SHEET,
-        },
-      });
-      shopMap.set(sName, created.id);
-    }
-  }
+  // 3. Packages
+  const packageMap = new Map<string, string>(); // `${gameId}|${packageName}` -> id
+  const packageRows = new Map<string, CsvPriceRow>();
+  for (const r of finalRows) packageRows.set(`${r.game_slug}|${r.package_name}`, r);
 
-  // 3. แคช Packages ใน Memory (สร้างหรือดึงเท่าที่จำเป็น)
-  const packageMap = new Map<string, string>(); // `${gameId}_${packageName}` -> id
-  const uniquePackages = Array.from(
-    new Set(
-      finalRows.map((r) => {
-        const pkgName = r.package_name || (r.game_slug === "valorant" ? `${r.vp_points.toLocaleString()} VP` : `${r.vp_points.toLocaleString()} แต้ม`);
-        return `${r.game_slug}:::${r.category}:::${r.vp_points}:::${pkgName}`;
-      })
-    )
-  );
-
-  for (const item of uniquePackages) {
-    const [slug, category, vpStr, packageName] = item.split(":::");
-    const vp = parseInt(vpStr, 10);
-    const gameId = gameMap.get(slug)!;
-
+  for (const r of packageRows.values()) {
+    const gameId = gameMap.get(r.game_slug)!;
     const pkg = await prisma.gamePackage.upsert({
-      where: {
-        gameId_packageName: {
-          gameId,
-          packageName,
-        },
-      },
-      update: {
-        basePoints: vp,
-        category: category || "ทั่วไป",
-      },
+      where: { gameId_packageName: { gameId, packageName: r.package_name } },
+      update: { basePoints: r.points, category: r.category, unit: r.unit },
       create: {
         gameId,
-        category: category || "ทั่วไป",
-        packageName,
-        basePoints: vp,
+        packageName: r.package_name,
+        basePoints: r.points,
+        category: r.category,
+        unit: r.unit,
       },
     });
-    packageMap.set(`${gameId}_${packageName}`, pkg.id);
+    packageMap.set(`${gameId}|${r.package_name}`, pkg.id);
   }
 
-  // 4. Upsert PriceListing โดยใช้ ID จาก Memory ทั้งหมด
+  // 4. Listings
+  const keptListingIds: string[] = [];
   for (const r of finalRows) {
     const gameId = gameMap.get(r.game_slug)!;
-    const unit = r.game_slug === "valorant" ? "VP" : r.game_slug === "rov" ? "คูปอง" : "แต้ม";
-    const packageName = r.package_name || `${r.vp_points.toLocaleString()} ${unit}`;
-    const packageId = packageMap.get(`${gameId}_${packageName}`)!;
+    const packageId = packageMap.get(`${gameId}|${r.package_name}`)!;
     const shopId = shopMap.get(r.shop_name)!;
 
-    const totalPoints = r.vp_points + r.bonus_points;
-    const effectivePpu = totalPoints > 0 ? r.sale_price / totalPoints : r.sale_price;
+    const totalPoints = r.points + r.bonus_points;
+    const data = {
+      originalPrice: r.original_price,
+      salePrice: r.sale_price,
+      bonusPoints: r.bonus_points,
+      effectivePpu: r.sale_price / totalPoints,
+      hasPromo: Boolean(r.promo_label),
+      promoLabel: r.promo_label,
+      promoExpiresAt: r.promo_expires_at,
+      isFirstTimeOnly: r.first_time_only,
+      inStock: r.in_stock,
+    };
 
-    await prisma.priceListing.upsert({
-      where: {
-        packageId_shopId: {
-          packageId,
-          shopId,
-        },
-      },
-      update: {
-        originalPrice: r.original_price,
-        salePrice: r.sale_price,
-        bonusPoints: r.bonus_points,
-        effectivePpu,
-        hasPromo: Boolean(r.promo_label),
-        promoLabel: r.promo_label,
-        inStock: r.in_stock,
-      },
-      create: {
-        packageId,
-        shopId,
-        originalPrice: r.original_price,
-        salePrice: r.sale_price,
-        bonusPoints: r.bonus_points,
-        effectivePpu,
-        hasPromo: Boolean(r.promo_label),
-        promoLabel: r.promo_label,
-        inStock: r.in_stock,
-      },
+    const listing = await prisma.priceListing.upsert({
+      where: { packageId_shopId: { packageId, shopId } },
+      update: data,
+      create: { packageId, shopId, ...data },
     });
-
-    updatedCount++;
+    keptListingIds.push(listing.id);
   }
+
+  // 5. ลบของที่ไม่มีในชีตแล้ว (เฉพาะเกมที่อยู่ในชีตรอบนี้)
+  const syncedGameIds = Array.from(gameMap.values());
+  const removedListings = await prisma.priceListing.deleteMany({
+    where: {
+      id: { notIn: keptListingIds },
+      package: { gameId: { in: syncedGameIds } },
+    },
+  });
+  const removedPackages = await prisma.gamePackage.deleteMany({
+    where: {
+      id: { notIn: Array.from(packageMap.values()) },
+      gameId: { in: syncedGameIds },
+    },
+  });
 
   return {
     totalRows: rows.length,
-    syncedRows: updatedCount,
+    syncedRows: keptListingIds.length,
+    removedListings: removedListings.count,
+    removedPackages: removedPackages.count,
   };
 }
