@@ -104,10 +104,6 @@ export default async function HomePage() {
         <main className="relative min-h-screen overflow-x-hidden bg-[#020a1c] text-white antialiased">
           <Curtain />
           <Backdrop />
-          <div aria-hidden className="p3-stripes" />
-          <div aria-hidden className="p3-float pointer-events-none fixed -right-24 -top-24">
-            <div className="h-72 w-72 rotate-45 bg-[#19e3ff]/10" />
-          </div>
 
           <SiteHeader updatedIso={updated ? updated.toISOString() : null} />
           <Ticker />

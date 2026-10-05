@@ -12,7 +12,7 @@ import {
 export type Lang = "th" | "en";
 
 const th = {
-  brand: "TopupCompare",
+  brand: "TERMKOOM",
   updatedAt: "อัปเดตล่าสุด",
   noPriceData: "ยังไม่มีข้อมูลราคา",
   heroLine1: "เติมเกมร้านไหน",
@@ -49,7 +49,7 @@ const th = {
 export type Dict = typeof th;
 
 const en: Dict = {
-  brand: "TopupCompare",
+  brand: "TERMKOOM",
   updatedAt: "Last updated",
   noPriceData: "No price data yet",
   heroLine1: "Where to top up",

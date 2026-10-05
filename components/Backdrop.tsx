@@ -99,7 +99,7 @@ export function Curtain() {
       <div className="absolute inset-0 bg-white" />
       <div className="absolute inset-0 flex items-center justify-center bg-[#020a1c]">
         <span className="-skew-x-12 text-4xl font-black italic tracking-tight text-[#19e3ff] sm:text-6xl">
-          TOPUP COMPARE
+          TERMKOOM
         </span>
       </div>
     </div>
