@@ -75,3 +75,17 @@ enum ShopSourceType {
   MANUAL
   SCRAPED
 }
+
+model ClickLog {
+  id          String   @id @default(cuid())
+  gameSlug    String
+  gameName    String
+  shopName    String
+  packageName String
+  salePrice   Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  @@index([gameSlug])
+  @@index([shopName])
+  @@index([createdAt])
+}

@@ -120,6 +120,24 @@ export function ComparisonView({ games }: { games: GameView[] }) {
     itemRefs.current[next]?.focus();
   }
 
+  function trackOutboundClick(listing: Listing) {
+    try {
+      fetch("/api/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gameSlug: game.slug,
+          gameName: game.name,
+          shopName: listing.shop.name,
+          packageName: pkg.packageName,
+          salePrice: listing.salePrice,
+        }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
+  }
+
   return (
     <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
       {/* เมนูเลือกเกม: สไตล์ Persona 3 Reload คม ชัด ไม่โดนตัดขอบ */}
@@ -421,6 +439,7 @@ export function ComparisonView({ games }: { games: GameView[] }) {
                       i={i}
                       best={l.id === bestId}
                       savings={savings}
+                      onTrackClick={() => trackOutboundClick(l)}
                     />
                   );
                 })}
@@ -494,6 +513,7 @@ export function ComparisonView({ games }: { games: GameView[] }) {
                     href={l.shop.baseUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackOutboundClick(l)}
                     className={
                       "mt-3 block w-full -skew-x-12 py-2 text-center text-xs font-black italic transition-transform active:scale-95 " +
                       (best ? "bg-[#19e3ff] text-[#020a1c]" : "bg-white text-[#020a1c]")
@@ -558,11 +578,13 @@ function Row({
   i,
   best,
   savings = 0,
+  onTrackClick,
 }: {
   l: Listing;
   i: number;
   best: boolean;
   savings?: number;
+  onTrackClick?: () => void;
 }) {
   const { t } = useLang();
   const discounted = l.originalPrice > l.salePrice;
@@ -658,6 +680,7 @@ function Row({
           href={l.shop.baseUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={onTrackClick}
           aria-label={`${t("goToShopAria")} ${l.shop.name}`}
           className={
             "group relative inline-block -skew-x-12 overflow-hidden px-5 py-2 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-90 " +
