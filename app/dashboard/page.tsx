@@ -1,9 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { DashboardAuth } from "./DashboardAuth";
 
-export const revalidate = 0; // หน้า Dashboard ดึงข้อมูลสดทุกครั้งที่เปิดดู
+export const revalidate = 0; // ดึงข้อมูลสดทุกครั้งที่เปิดดู
 
 export default async function DashboardPage() {
+  // ตรวจสอบคุกกี้การล็อกอิน
+  const cookieStore = await cookies();
+  const authCookie = cookieStore.get("dashboard_session")?.value;
+  const isAuthenticated = authCookie === "authenticated";
+
+  if (!isAuthenticated) {
+    return <DashboardAuth />;
+  }
+
   type ClickItem = {
     id: string;
     gameSlug: string;
@@ -16,7 +27,6 @@ export default async function DashboardPage() {
 
   let clicks: ClickItem[] = [];
   try {
-    // 1. ดึงข้อมูลคลิกทั้งหมด
     clicks = (await prisma.clickLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 100, // แสดง 100 คลิกประวัติล่าสุด
@@ -49,7 +59,7 @@ export default async function DashboardPage() {
             <div className="flex items-center gap-2">
               <span className="inline-block h-4 w-1 -skew-x-12 bg-[#19e3ff]" />
               <h1 className="text-2xl font-black italic tracking-wide text-white">
-                ANALYTICS DASHBOARD <span className="text-[#19e3ff] text-sm font-normal">// LIVE TRAFFIC</span>
+                ANALYTICS DASHBOARD <span className="text-[#19e3ff] text-sm font-normal">// RESTRICTED ACCESS</span>
               </h1>
             </div>
             <p className="mt-1 text-xs text-cyan-100/60 font-mono">
@@ -57,12 +67,14 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <Link
-            href="/"
-            className="-skew-x-12 border border-[#19e3ff]/40 bg-[#06173a] px-4 py-2 text-xs font-black italic text-[#19e3ff] hover:bg-[#19e3ff] hover:text-[#020a1c] transition-colors"
-          >
-            ◀ กลับหน้าหลัก
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="-skew-x-12 border border-[#19e3ff]/40 bg-[#06173a] px-4 py-2 text-xs font-black italic text-[#19e3ff] hover:bg-[#19e3ff] hover:text-[#020a1c] transition-colors"
+            >
+              ◀ กลับหน้าหลัก
+            </Link>
+          </div>
         </div>
 
         {/* Overview Stat Cards */}
