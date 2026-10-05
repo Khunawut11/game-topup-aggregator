@@ -11,7 +11,6 @@ export async function POST(req: Request) {
     }
 
     // บันทึกลง Supabase
-    // @ts-expect-error ClickLog model generated on push
     await prisma.clickLog.create({
       data: {
         gameSlug: String(gameSlug),

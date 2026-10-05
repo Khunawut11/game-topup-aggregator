@@ -17,11 +17,10 @@ export default async function DashboardPage() {
   let clicks: ClickItem[] = [];
   try {
     // 1. ดึงข้อมูลคลิกทั้งหมด
-    // @ts-expect-error ClickLog model generated on build
-    clicks = await prisma.clickLog.findMany({
+    clicks = (await prisma.clickLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 100, // แสดง 100 คลิกประวัติล่าสุด
-    });
+    })) as unknown as ClickItem[];
   } catch (error) {
     console.error("Dashboard DB fetch error:", error);
   }
