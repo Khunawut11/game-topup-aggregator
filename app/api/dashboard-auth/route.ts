@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || "Khunawut0938363177";
+const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD;
 
 export async function POST(req: Request) {
   try {
     const { password } = await req.json();
+
+    // หากไม่มีการตั้งค่า DASHBOARD_PASSWORD ในระบบ ไม่อนุญาตให้ล็อกอินเพื่อความปลอดภัย
+    if (!DASHBOARD_PASSWORD) {
+      console.error("DASHBOARD_PASSWORD is not configured in environment variables.");
+      return NextResponse.json(
+        { error: "Server authentication is not configured" },
+        { status: 500 }
+      );
+    }
 
     if (password === DASHBOARD_PASSWORD) {
       const cookieStore = await cookies();
